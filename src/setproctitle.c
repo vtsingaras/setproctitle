@@ -8,24 +8,6 @@
 
 #define PRINT_USAGE() printf("Usage: %s -pid PID -title TITLE\n", argv[0]);
 
-void hexdump(void *ptr, int buflen) {
-  unsigned char *buf = (unsigned char*)ptr;
-  int i, j;
-  for (i=0; i<buflen; i+=16) {
-    printf("%06x: ", i);
-    for (j=0; j<16; j++) 
-      if (i+j < buflen)
-        printf("%02x ", buf[i+j]);
-      else
-        printf("   ");
-    printf(" ");
-    for (j=0; j<16; j++) 
-      if (i+j < buflen)
-        printf("%c", isprint(buf[i+j]) ? buf[i+j] : '.');
-    printf("\n");
-  }
-}
-
 int setproctitle(unsigned int pid, char* title) {
   char buf[2048], *tmp;
   FILE *f;
@@ -37,21 +19,22 @@ int setproctitle(unsigned int pid, char* title) {
   errno = 0;
   f = fopen(buf, "r");
   if (!f) {
-    printf("Invalid PID specified.\n");
+    perror("Invalid PID specified?\n");
     return -1;
   }
 
+  errno = 0;
   tmp = fgets(buf, sizeof(buf), f);
   fclose(f);
   if (!tmp) {
-    printf("Error reading /proc/PID/stat. Use strace for more info.");
+    perror("Error reading /proc/PID/stat.");
     return -1;
   }
 
   tmp = strchr(buf, ' ');
   for (i = 0; i < 46; i++) {
     if (!tmp) {
-      printf("/proc/PID/format changed?\n");
+      printf("/proc/PID/strace format changed?\n");
       return -1;
     }
     tmp = strchr(tmp+1, ' ');
@@ -62,7 +45,7 @@ int setproctitle(unsigned int pid, char* title) {
 
   i = sscanf(tmp, "%lu %lu", &arg_start, &arg_end);
   if (i != 2) {
-    printf("/proc/PID/format changed?\n");
+    printf("/proc/PID/strace format changed?\n");
     return -1;
   }
 
@@ -77,8 +60,9 @@ int setproctitle(unsigned int pid, char* title) {
     }
   }
 
+  errno = 0;
   if (ret = ptrace(PTRACE_ATTACH, pid, NULL, NULL) == -1) {
-    printf("Unable to attach... Maybe you are using GDB or ptrace is blocked in your system.\n");
+    perror("Unable to attach.");
     return -1;
   }
   /* Clear low bits to make addresses word-aligned for ptrace;
@@ -88,9 +72,10 @@ int setproctitle(unsigned int pid, char* title) {
   peek_poke_num_words = (peek_poke_end - peek_poke_start) / sizeof(long);
   peek_poke_buf = malloc(peek_poke_num_words * sizeof(long));
 
+  errno = 0;
   for (i = 0; i < peek_poke_num_words; i++){
-    if ( (ret = ptrace(PTRACE_PEEKDATA, pid, peek_poke_start + i*sizeof(long), NULL)) == -1) {
-      printf("Error setting the new title.\n");
+    if ((ret = ptrace(PTRACE_PEEKDATA, pid, peek_poke_start + i*sizeof(long), NULL)) == -1) {
+      perror("Error setting the new title.\n");
       return -1;
     }
     peek_poke_buf[i] = ret;
@@ -98,14 +83,17 @@ int setproctitle(unsigned int pid, char* title) {
 
   strcpy((char*)peek_poke_buf + arg_start - peek_poke_start, title);
 
+  errno = 0;
   for (i = 0; i < peek_poke_num_words; i++){
     if (ptrace(PTRACE_POKEDATA, pid, peek_poke_start + i*sizeof(long), peek_poke_buf[i]) == -1) {
       printf("Error setting the new title. Target potentially left in incosistent state.\n");
       return -1;
     }
   }
+
+  errno = 0;
   if (ptrace(PTRACE_CONT, pid, 0, 0) == -1) {
-    printf("Error setting the new title while resuming the process. Target potentially left in incosistent state.\n");
+    perror("Error setting the new title while resuming the process.\n");
     return -1;
   }
 
@@ -150,7 +138,7 @@ int main(int argc, char **argv) {
     return EXIT_FAILURE;
   }
 
-  if (0 == setproctitle(pid, title)) {
+  if (setproctitle(pid, title) == 0) {
     return EXIT_SUCCESS;
   }
 
