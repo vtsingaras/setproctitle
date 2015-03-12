@@ -1,0 +1,17 @@
+.TH SETPROCTITLE 1
+.SH NAME
+setproctitle \- change a process' title
+.SH SYNOPSIS
+.B setproctitle
+\fB\-p\fR \fIPID\fR
+\fB\-t\fR \fITITLE\fR
+.SH DESCRIPTION
+.B setproctitle
+changes a running process title with one that has at most the current one's length
+.SH OPTIONS
+.TP
+.BR \-p ", " \-PID =\fIPID\fR
+Set the target process' pid.
+.TP
+.BR \-t ", " \-title =\fITITLE\fR
+Set the new title.
