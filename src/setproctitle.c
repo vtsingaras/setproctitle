@@ -5,6 +5,7 @@
 #include <getopt.h>
 #include <sys/types.h>
 #include <sys/ptrace.h>
+#include <sys/wait.h>
 
 #define PRINT_USAGE() printf("Usage: %s -pid PID -title TITLE\n", argv[0]);
 
@@ -65,6 +66,7 @@ int setproctitle(unsigned int pid, char* title) {
     perror("Unable to attach.");
     return -1;
   }
+  wait(NULL);
   /* Clear low bits to make addresses word-aligned for ptrace;
      for peek_poke_end also increment by one word */
   peek_poke_start = arg_start & ~(sizeof(long) - 1);
@@ -75,7 +77,7 @@ int setproctitle(unsigned int pid, char* title) {
   errno = 0;
   for (i = 0; i < peek_poke_num_words; i++){
     if ((ret = ptrace(PTRACE_PEEKDATA, pid, peek_poke_start + i*sizeof(long), NULL)) == -1) {
-      perror("Error setting the new title.\n");
+      perror("Error setting the new title.");
       return -1;
     }
     peek_poke_buf[i] = ret;
@@ -86,14 +88,14 @@ int setproctitle(unsigned int pid, char* title) {
   errno = 0;
   for (i = 0; i < peek_poke_num_words; i++){
     if (ptrace(PTRACE_POKEDATA, pid, peek_poke_start + i*sizeof(long), peek_poke_buf[i]) == -1) {
-      printf("Error setting the new title. Target potentially left in incosistent state.\n");
+      perror("Error setting the new title. Target potentially left in incosistent state.");
       return -1;
     }
   }
 
   errno = 0;
   if (ptrace(PTRACE_CONT, pid, 0, 0) == -1) {
-    perror("Error setting the new title while resuming the process.\n");
+    perror("Error setting the new title while resuming the process.");
     return -1;
   }
 
