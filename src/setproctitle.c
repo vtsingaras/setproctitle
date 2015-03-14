@@ -1,3 +1,4 @@
+#include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -7,7 +8,7 @@
 #include <sys/ptrace.h>
 #include <sys/wait.h>
 
-#define PRINT_USAGE() printf("Usage: %s -pid PID -title TITLE\n", argv[0]);
+#define PRINT_USAGE() printf("Usage: %s --pid PID --title TITLE\n", argv[0]);
 
 int setproctitle(unsigned int pid, char* title) {
   char buf[2048], *tmp;
@@ -20,7 +21,7 @@ int setproctitle(unsigned int pid, char* title) {
   errno = 0;
   f = fopen(buf, "r");
   if (!f) {
-    perror("Invalid PID specified?\n");
+    perror("Invalid PID specified?");
     return -1;
   }
 
@@ -114,7 +115,7 @@ int main(int argc, char **argv) {
   static struct option long_options[] = {
     {"pid", required_argument, NULL, 'p'},
     {"title", required_argument, NULL, 't'},
-    {NULL, 0, NULL, NULL}
+    {0, 0, 0, 0},
   };
 
   while ((opt = getopt_long(argc, argv, "p:t:", long_options, NULL)) != -1) {
