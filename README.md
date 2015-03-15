@@ -5,5 +5,5 @@ See the included man page for usage instructions or run with -h.
 
 INSTALL:
 --------------
-
-./configure && make && make install
+aclocal && autoconf && autoheader && automake --install-missing
+./configure && make && sudo make install
