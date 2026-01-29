@@ -14,8 +14,9 @@ int setproctitle(unsigned int pid, char* title) {
   char buf[2048], *tmp;
   FILE *f;
   int i, ret = 0;
-  size_t len, peek_poke_num_words = 0;
-  unsigned long arg_start, arg_end, peek_poke_start, peek_poke_end, *peek_poke_buf;
+  size_t len, max_len, peek_poke_num_words = 0;
+  unsigned long arg_start, arg_end, env_start, env_end;
+  unsigned long peek_poke_start, peek_poke_end, *peek_poke_buf;
 
   sprintf(buf, "/proc/%d/stat", pid);
   errno = 0;
@@ -36,7 +37,7 @@ int setproctitle(unsigned int pid, char* title) {
   tmp = strchr(buf, ' ');
   for (i = 0; i < 46; i++) {
     if (!tmp) {
-      printf("/proc/PID/strace format changed?\n");
+      printf("/proc/PID/stat format changed?\n");
       return -1;
     }
     tmp = strchr(tmp+1, ' ');
@@ -45,16 +46,18 @@ int setproctitle(unsigned int pid, char* title) {
   if (!tmp)
     return -1;
 
-  i = sscanf(tmp, "%lu %lu", &arg_start, &arg_end);
-  if (i != 2) {
-    printf("/proc/PID/strace format changed?\n");
+  i = sscanf(tmp, "%lu %lu %lu %lu", &arg_start, &arg_end, &env_start, &env_end);
+  if (i != 4) {
+    printf("/proc/PID/stat format changed?\n");
     return -1;
   }
 
   len = strlen(title) + 1;
+  /* Use environment area for extra space if needed (argv and envp are contiguous) */
+  max_len = env_end - arg_start;
 
-  if (len > arg_end - arg_start) {
-    printf("Can't set a title that is larger than the current one :(");
+  if (len > max_len) {
+    printf("Title too long (max %zu bytes, got %zu).\n", max_len - 1, len - 1);
     return -1;
   }
 
@@ -67,7 +70,7 @@ int setproctitle(unsigned int pid, char* title) {
   /* Clear low bits to make addresses word-aligned for ptrace;
      for peek_poke_end also increment by one word */
   peek_poke_start = arg_start & ~(sizeof(long) - 1);
-  peek_poke_end = (arg_end & ~(sizeof(long) - 1)) + sizeof(long);
+  peek_poke_end = (env_end & ~(sizeof(long) - 1)) + sizeof(long);
   peek_poke_num_words = (peek_poke_end - peek_poke_start) / sizeof(long);
   peek_poke_buf = malloc(peek_poke_num_words * sizeof(long));
 
@@ -82,7 +85,7 @@ int setproctitle(unsigned int pid, char* title) {
 
   /* Copy the new title and fill remaining space with null bytes */
   memcpy((char*)peek_poke_buf + arg_start - peek_poke_start, title, len);
-  memset((char*)peek_poke_buf + arg_start - peek_poke_start + len, '\0', arg_end - arg_start - len);
+  memset((char*)peek_poke_buf + arg_start - peek_poke_start + len, '\0', max_len - len);
 
   errno = 0;
   for (i = 0; i < peek_poke_num_words; i++){
