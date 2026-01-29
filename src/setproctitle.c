@@ -56,10 +56,6 @@ int setproctitle(unsigned int pid, char* title) {
   if (len > arg_end - arg_start) {
     printf("Can't set a title that is larger than the current one :(");
     return -1;
-  } else if (len < arg_end - arg_start) {
-    for (i = len; i < arg_end - arg_start; i++) {
-      strcat(title, " ");
-    }
   }
 
   errno = 0;
@@ -84,7 +80,9 @@ int setproctitle(unsigned int pid, char* title) {
     peek_poke_buf[i] = ret;
   }
 
-  strcpy((char*)peek_poke_buf + arg_start - peek_poke_start, title);
+  /* Copy the new title and fill remaining space with null bytes */
+  memcpy((char*)peek_poke_buf + arg_start - peek_poke_start, title, len);
+  memset((char*)peek_poke_buf + arg_start - peek_poke_start + len, '\0', arg_end - arg_start - len);
 
   errno = 0;
   for (i = 0; i < peek_poke_num_words; i++){
