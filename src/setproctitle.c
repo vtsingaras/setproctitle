@@ -8,9 +8,9 @@
 #include <sys/ptrace.h>
 #include <sys/wait.h>
 
-#define PRINT_USAGE() printf("Usage: %s --pid PID --title TITLE\n", argv[0]);
+#define PRINT_USAGE() printf("Usage: %s --pid PID --title TITLE [--force]\n", argv[0]);
 
-int setproctitle(unsigned int pid, char* title) {
+int setproctitle(unsigned int pid, char* title, int force) {
   char buf[2048], *tmp;
   FILE *f;
   int i, ret = 0;
@@ -53,12 +53,25 @@ int setproctitle(unsigned int pid, char* title) {
   }
 
   len = strlen(title) + 1;
-  /* Use environment area for extra space if needed (argv and envp are contiguous) */
-  max_len = env_end - arg_start;
 
-  if (len > max_len) {
-    printf("Title too long (max %zu bytes, got %zu).\n", max_len - 1, len - 1);
-    return -1;
+  /* By default, only use the argument area to avoid corrupting environment */
+  if (len > arg_end - arg_start) {
+    if (!force) {
+      printf("Title too long (max %zu bytes, got %zu).\n",
+             arg_end - arg_start - 1, len - 1);
+      printf("Use --force to allow overwriting environment variables (max %zu bytes).\n",
+             env_end - arg_start - 1);
+      return -1;
+    }
+    /* With --force, allow extending into environment area */
+    max_len = env_end - arg_start;
+    if (len > max_len) {
+      printf("Title too long (max %zu bytes with --force, got %zu).\n",
+             max_len - 1, len - 1);
+      return -1;
+    }
+  } else {
+    max_len = arg_end - arg_start;
   }
 
   errno = 0;
@@ -70,7 +83,7 @@ int setproctitle(unsigned int pid, char* title) {
   /* Clear low bits to make addresses word-aligned for ptrace;
      for peek_poke_end also increment by one word */
   peek_poke_start = arg_start & ~(sizeof(long) - 1);
-  peek_poke_end = (env_end & ~(sizeof(long) - 1)) + sizeof(long);
+  peek_poke_end = ((arg_start + max_len) & ~(sizeof(long) - 1)) + sizeof(long);
   peek_poke_num_words = (peek_poke_end - peek_poke_start) / sizeof(long);
   peek_poke_buf = malloc(peek_poke_num_words * sizeof(long));
 
@@ -106,6 +119,7 @@ int setproctitle(unsigned int pid, char* title) {
 
 int main(int argc, char **argv) {
   unsigned int pid = 0;
+  int force = 0;
   char *title = NULL, opt = '\0';
 
   if (geteuid() != 0) {
@@ -116,10 +130,11 @@ int main(int argc, char **argv) {
   static struct option long_options[] = {
     {"pid", required_argument, NULL, 'p'},
     {"title", required_argument, NULL, 't'},
+    {"force", no_argument, NULL, 'f'},
     {0, 0, 0, 0},
   };
 
-  while ((opt = getopt_long(argc, argv, "p:t:", long_options, NULL)) != -1) {
+  while ((opt = getopt_long(argc, argv, "p:t:f", long_options, NULL)) != -1) {
     switch (opt) {
       case 'p':
         errno = 0;
@@ -130,6 +145,9 @@ int main(int argc, char **argv) {
         break;
       case 't':
         title = strdup(optarg);
+        break;
+      case 'f':
+        force = 1;
         break;
       default:
         PRINT_USAGE();
@@ -142,7 +160,7 @@ int main(int argc, char **argv) {
     return EXIT_FAILURE;
   }
 
-  if (setproctitle(pid, title) == 0) {
+  if (setproctitle(pid, title, force) == 0) {
     return EXIT_SUCCESS;
   }
 
