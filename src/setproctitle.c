@@ -84,7 +84,7 @@ int setproctitle(unsigned int pid, char* title) {
     peek_poke_buf[i] = ret;
   }
 
-  strcpy((char*)peek_poke_buf + arg_start - peek_poke_start, title);
+  memcpy((char*)peek_poke_buf + arg_start - peek_poke_start, title, strlen(title) + 1);
 
   errno = 0;
   for (i = 0; i < peek_poke_num_words; i++){
