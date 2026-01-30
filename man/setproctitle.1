@@ -5,13 +5,23 @@ setproctitle \- change a process' title
 .B setproctitle
 \fB\-p\fR \fIPID\fR
 \fB\-t\fR \fITITLE\fR
+[\fB\-f\fR]
 .SH DESCRIPTION
 .B setproctitle
-changes a running process title with one that has at most the current one's length
+changes a running process title as displayed by tools like
+.BR ps (1)
+and
+.BR htop (1).
+By default, the new title cannot exceed the length of the original command line arguments.
 .SH OPTIONS
 .TP
-.BR \-p ", " \-PID =\fIPID\fR
+.BR \-p ", " \-\-pid =\fIPID\fR
 Set the target process' pid.
 .TP
-.BR \-t ", " \-title =\fITITLE\fR
+.BR \-t ", " \-\-title =\fITITLE\fR
 Set the new title.
+.TP
+.BR \-f ", " \-\-force
+Allow titles longer than the original by overwriting the process' environment
+variable memory area. Warning: this will corrupt the target process' environment
+variables, which may cause issues if the process attempts to read them later.
