@@ -68,6 +68,7 @@ echo "========================================"
 
 sleep 1000 &
 SLEEP_PID=$!
+sleep 0.1  # Wait for process to fully initialize
 ORIGINAL_CMDLINE=$(get_cmdline $SLEEP_PID)
 log_info "Started sleep process with PID $SLEEP_PID"
 log_info "Original cmdline: '$ORIGINAL_CMDLINE'"
@@ -96,6 +97,7 @@ echo "========================================"
 
 sleep 1000 &
 SLEEP_PID=$!
+sleep 0.1  # Wait for process to fully initialize
 log_info "Started sleep process with PID $SLEEP_PID"
 
 NEW_TITLE="a b"
@@ -122,6 +124,7 @@ echo "========================================"
 
 sleep 1000 &
 SLEEP_PID=$!
+sleep 0.1  # Wait for process to fully initialize
 ORIGINAL_CMDLINE=$(get_cmdline $SLEEP_PID)
 ORIGINAL_LEN=${#ORIGINAL_CMDLINE}
 log_info "Started sleep process with PID $SLEEP_PID"
@@ -148,6 +151,7 @@ echo "========================================"
 
 sleep 1000 &
 SLEEP_PID=$!
+sleep 0.1  # Wait for process to fully initialize
 ORIGINAL_CMDLINE=$(get_cmdline $SLEEP_PID)
 ORIGINAL_LEN=${#ORIGINAL_CMDLINE}
 log_info "Started sleep process with PID $SLEEP_PID"
@@ -206,6 +210,7 @@ echo "========================================"
 
 sleep 1000 &
 SLEEP_PID=$!
+sleep 0.1  # Wait for process to fully initialize
 log_info "Started sleep process with PID $SLEEP_PID"
 
 NEW_TITLE="long"
