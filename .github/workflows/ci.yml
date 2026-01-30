@@ -27,3 +27,6 @@ jobs:
 
     - name: Verify binary
       run: ls -la src/setproctitle && file src/setproctitle
+
+    - name: Run functional tests
+      run: sudo tests/test_setproctitle.sh
